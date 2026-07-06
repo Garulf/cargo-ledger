@@ -70,6 +70,14 @@ var UEX = (function(){
     });
   }
 
+  function getPricesByCommodity(commodityId) {
+    return cached('cargoLedger.uex.cprices.' + commodityId, 60*60*1000, function(){
+      return fetchJSON('/commodities_prices?id_commodity=' + commodityId).then(function(rows){
+        return rows.map(function(r){ return { id_terminal: r.id_terminal, price_buy: r.price_buy, price_sell: r.price_sell }; });
+      });
+    });
+  }
+
   function clearCache() {
     Object.keys(localStorage).forEach(function(k){
       if (k.indexOf('cargoLedger.uex.') === 0) localStorage.removeItem(k);
@@ -80,6 +88,7 @@ var UEX = (function(){
     getCommodities: getCommodities,
     getTerminals: getTerminals,
     getPrices: getPrices,
+    getPricesByCommodity: getPricesByCommodity,
     clearCache: clearCache,
   };
 })();

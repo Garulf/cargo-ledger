@@ -24,3 +24,7 @@
   .log-del{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;color:#585b70;font-size:13px;cursor:pointer;opacity:0;padding:4px 6px;}
   .log-row:hover .log-del{opacity:1;}
   .log-del:hover{color:#f38ba8;}
+  @media (max-width:900px){
+    .body-grid{grid-template-columns:1fr !important;}
+    .side-col{position:static !important;}
+  }

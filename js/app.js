@@ -11,6 +11,8 @@ var DOTS = ['#a6e3a1','#89b4fa','#cba6f7','#fab387','#94e2d5','#f5c2e7','#f9e2af
     runs: Store.loadRuns(),
     commodities: [],   // from UEX
     terminals: [],     // from UEX
+    buyableIds: null,  // null = no filter; else set of String commodity ids sold at fLoc
+    sellableIds: null, // null = no filter; else set of String terminal ids that take active commodity
   };
 
   var toastTimeout = null;
@@ -47,9 +49,11 @@ var DOTS = ['#a6e3a1','#89b4fa','#cba6f7','#fab387','#94e2d5','#f5c2e7','#f9e2af
     runs.forEach(function(r){ t += r.profit; cum.push(t); });
     var n = cum.length;
     var x0=44, x1=798, y0=28, y1=262;
-    var maxY = Math.max(1, Math.max.apply(null, cum)) * 1.12;
+    var hi = Math.max.apply(null, cum), lo = Math.min.apply(null, cum);
+    var top = Math.max(1, hi) * 1.12;
+    var bot = lo < 0 ? lo * 1.12 : 0;
     var X = function(i){ return n <= 1 ? x0 : x0 + (i/(n-1))*(x1-x0); };
-    var Y = function(v){ return y1 - (v/maxY)*(y1-y0); };
+    var Y = function(v){ return y1 - ((v - bot)/(top - bot))*(y1-y0); };
     var line = '';
     for (var i=0;i<n;i++) line += (i===0?'M':'L') + X(i).toFixed(1) + ' ' + Y(cum[i]).toFixed(1) + ' ';
     var area = line + 'L ' + X(n-1).toFixed(1) + ' ' + y1 + ' L ' + X(0).toFixed(1) + ' ' + y1 + ' Z';
@@ -64,7 +68,7 @@ var DOTS = ['#a6e3a1','#89b4fa','#cba6f7','#fab387','#94e2d5','#f5c2e7','#f9e2af
       });
     }
     var yTicks = [];
-    for (var k=0;k<=3;k++) { var v = maxY*k/3; var y = Y(v); yTicks.push({ y: y.toFixed(1), ty: (y+4).toFixed(1), label: abbr(v) }); }
+    for (var k=0;k<=3;k++) { var v = bot + (top - bot)*k/3; var y = Y(v); yTicks.push({ y: y.toFixed(1), ty: (y+4).toFixed(1), label: abbr(v) }); }
     return { line: line, area: area, points: points, yTicks: yTicks, cum: cum, n: n, X: X, Y: Y };
   }
 
@@ -106,13 +110,14 @@ var DOTS = ['#a6e3a1','#89b4fa','#cba6f7','#fab387','#94e2d5','#f5c2e7','#f9e2af
     sel.value = settings.system;
   }
 
-  function buildTerminalSelect(sel, stateKey) {
+  function buildTerminalSelect(sel, stateKey, filterIds) {
     var prev = state[stateKey];
     sel.innerHTML = '';
     var ph = document.createElement('option'); ph.value = ''; ph.textContent = 'Select terminal…'; sel.appendChild(ph);
     var groups = {}, order = [];
     state.terminals.forEach(function(t){
       if (settings.system !== 'all' && t.system !== settings.system) return;
+      if (filterIds && !filterIds[String(t.id)]) return;
       if (!groups[t.system]) { groups[t.system] = []; order.push(t.system); }
       groups[t.system].push(t);
     });
@@ -132,24 +137,65 @@ var DOTS = ['#a6e3a1','#89b4fa','#cba6f7','#fab387','#94e2d5','#f5c2e7','#f9e2af
     else if (prev && !exists) { state[stateKey] = ''; sel.value = ''; }
   }
 
-  function populateSelects() {
-    buildTerminalSelect($('f-loc'), 'fLoc');
-    buildTerminalSelect($('e-loc'), 'eLoc');
-
+  function rebuildCommoditySelect() {
     var fc = $('f-com');
     var prevCom = state.fCom;
     fc.innerHTML = '';
     var ph = document.createElement('option'); ph.value = ''; ph.textContent = 'Select cargo…'; fc.appendChild(ph);
     var comExists = false;
     state.commodities.forEach(function(c){
+      if (state.buyableIds && !state.buyableIds[String(c.id)]) return;
       var o = document.createElement('option');
       o.value = String(c.id); o.textContent = c.name;
       fc.appendChild(o);
       if (String(c.id) === prevCom) comExists = true;
     });
     if (prevCom && comExists) { fc.value = prevCom; }
-    else if (prevCom && !comExists) { state.fCom = ''; fc.value = ''; }
+    else if (prevCom && !comExists) { state.fCom = ''; fc.value = ''; updateBuyPrefill(); }
+  }
 
+  function updateBuyableFilter() {
+    if (!state.fLoc) {
+      state.buyableIds = null;
+      rebuildCommoditySelect();
+      return;
+    }
+    var token = state.fLoc;
+    getPricesFor(state.fLoc).then(function(rows){
+      if (token !== state.fLoc) return;
+      var ids = {};
+      rows.forEach(function(r){ if (r.price_buy > 0) ids[String(r.id_commodity)] = true; });
+      state.buyableIds = ids;
+      rebuildCommoditySelect();
+    }).catch(function(){
+      if (token !== state.fLoc) return;
+      state.buyableIds = null;
+      rebuildCommoditySelect();
+    });
+  }
+
+  function updateSellableFilter() {
+    state.sellableIds = null;
+    buildTerminalSelect($('e-loc'), 'eLoc', state.sellableIds);
+    if (!state.active) return;
+    var token = state.active.commodityId;
+    UEX.getPricesByCommodity(state.active.commodityId).then(function(rows){
+      if (!state.active || state.active.commodityId !== token) return;
+      var ids = {};
+      rows.forEach(function(r){ if (r.price_sell > 0) ids[String(r.id_terminal)] = true; });
+      state.sellableIds = ids;
+      var prevELoc = state.eLoc;
+      buildTerminalSelect($('e-loc'), 'eLoc', state.sellableIds);
+      if (prevELoc && !state.eLoc) updateSellPrefill();
+    }).catch(function(){ /* leave sellableIds null (unfiltered) */ });
+  }
+
+  function populateSelects() {
+    buildTerminalSelect($('f-loc'), 'fLoc', null);
+    buildTerminalSelect($('e-loc'), 'eLoc', state.sellableIds);
+    rebuildCommoditySelect();
+
+    updateBuyableFilter();
     updateBuyPrefill();
     updateSellPrefill();
     updateLive();
@@ -166,6 +212,7 @@ var DOTS = ['#a6e3a1','#89b4fa','#cba6f7','#fab387','#94e2d5','#f5c2e7','#f9e2af
     $('active-cargo').textContent = state.active.scu + ' SCU ' + state.active.commodity;
     $('elapsed').textContent = clock((Date.now() - state.active.startTime)/1000);
     $('sell-hint').classList.add('hidden');
+    updateSellableFilter();
     updateLive();
   }
 
@@ -191,7 +238,8 @@ var DOTS = ['#a6e3a1','#89b4fa','#cba6f7','#fab387','#94e2d5','#f5c2e7','#f9e2af
     $('e-loc').value = ''; $('e-sold').value = ''; $('e-sell').value = '';
     $('sell-hint').classList.add('hidden');
     setPhase();
-    updateBuyPrefill();
+    state.buyableIds = null; state.sellableIds = null;
+    populateSelects();
   }
 
   function complete() {
@@ -212,7 +260,8 @@ var DOTS = ['#a6e3a1','#89b4fa','#cba6f7','#fab387','#94e2d5','#f5c2e7','#f9e2af
     $('e-loc').value = ''; $('e-sold').value = ''; $('e-sell').value = '';
     $('sell-hint').classList.add('hidden');
     setPhase();
-    updateBuyPrefill();
+    state.buyableIds = null; state.sellableIds = null;
+    populateSelects();
     updateHeader();
     renderChart();
     renderLog();
@@ -461,7 +510,7 @@ var DOTS = ['#a6e3a1','#89b4fa','#cba6f7','#fab387','#94e2d5','#f5c2e7','#f9e2af
     });
   });
 
-  $('f-loc').addEventListener('change', function(e){ state.fLoc = e.target.value; updateBuyPrefill(); });
+  $('f-loc').addEventListener('change', function(e){ state.fLoc = e.target.value; updateBuyableFilter(); updateBuyPrefill(); });
   $('f-com').addEventListener('change', function(e){ state.fCom = e.target.value; updateBuyPrefill(); });
   $('f-amt').addEventListener('input', function(e){ state.fAmt = e.target.value; updatePlan(); });
   $('f-buy').addEventListener('input', function(e){ state.fBuy = e.target.value; updatePlan(); });
