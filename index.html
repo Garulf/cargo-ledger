@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cargo Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div style="min-height:100vh;background:radial-gradient(1200px 600px at 70% -10%,#1e1e2e 0%,#11111b 60%);font-family:'Space Grotesk',system-ui,sans-serif;color:#cdd6f4;padding:28px 28px 56px;">
+  <div style="max-width:1380px;margin:0 auto;">
+
+    <!-- HEADER -->
+    <header style="display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:24px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:16px;">
+        <div style="width:46px;height:46px;border-radius:13px;background:linear-gradient(145deg,#a6e3a1,#74c7ec);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 22px -6px rgba(166,227,161,.6);">
+          <div style="width:20px;height:20px;border:3px solid #11111b;border-radius:5px;transform:rotate(45deg);"></div>
+        </div>
+        <div>
+          <div style="font-size:21px;font-weight:700;letter-spacing:-.01em;line-height:1;">Cargo Ledger</div>
+          <div style="font-size:12px;color:#6c7086;letter-spacing:.16em;text-transform:uppercase;margin-top:5px;font-weight:500;">Verse Trade Tracker</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:stretch;gap:12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <select id="sys-filter" class="sys-select" title="Star system"></select>
+          <button id="btn-refresh" class="icon-btn" title="Refresh UEX data">↻</button>
+        </div>
+        <div style="background:#181825;border:1px solid #313244;border-radius:14px;padding:12px 20px;min-width:150px;">
+          <div style="font-size:11px;color:#6c7086;letter-spacing:.12em;text-transform:uppercase;font-weight:600;">Total Profit</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;color:#a6e3a1;margin-top:4px;line-height:1;"><span id="stat-total"></span><span style="font-size:13px;color:#6c7086;font-weight:500;"> aUEC</span></div>
+        </div>
+        <div style="background:#181825;border:1px solid #313244;border-radius:14px;padding:12px 18px;">
+          <div style="font-size:11px;color:#6c7086;letter-spacing:.12em;text-transform:uppercase;font-weight:600;">Runs</div>
+          <div id="stat-runs" style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;margin-top:4px;line-height:1;"></div>
+        </div>
+        <div style="background:#181825;border:1px solid #313244;border-radius:14px;padding:12px 18px;">
+          <div style="font-size:11px;color:#6c7086;letter-spacing:.12em;text-transform:uppercase;font-weight:600;">aUEC / hr</div>
+          <div id="stat-perhr" style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;color:#89b4fa;margin-top:4px;line-height:1;"></div>
+        </div>
+      </div>
+    </header>
+
+    <div id="uex-banner" class="hidden" style="display:flex;align-items:center;justify-content:space-between;gap:16px;background:rgba(243,139,168,.08);border:1px solid rgba(243,139,168,.4);border-radius:12px;padding:12px 18px;margin-bottom:24px;font-size:13px;color:#f38ba8;">
+      <span>Couldn't reach the UEX API — terminal and commodity data is unavailable.</span>
+      <button id="btn-retry" class="icon-btn" style="color:#f38ba8;">Retry</button>
+    </div>
+
+    <!-- BODY GRID -->
+    <div style="display:grid;grid-template-columns:392px 1fr;gap:24px;align-items:start;">
+
+      <!-- LEFT: SETUP / ACTIVE -->
+      <aside style="position:sticky;top:24px;">
+
+        <!-- IDLE: NEW RUN -->
+        <div id="panel-idle" style="background:#181825;border:1px solid #313244;border-radius:18px;overflow:hidden;">
+          <div style="padding:20px 22px;border-bottom:1px solid #313244;display:flex;align-items:center;gap:10px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:#89b4fa;"></div>
+            <div style="font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;">Plan a Run</div>
+          </div>
+          <div style="padding:22px;display:flex;flex-direction:column;gap:18px;">
+
+            <div>
+              <label style="display:block;font-size:11px;color:#a6adc8;letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-bottom:8px;">Buy Location</label>
+              <div style="position:relative;">
+                <select id="f-loc" style="width:100%;appearance:none;background:#11111b;border:1px solid #313244;border-radius:11px;color:#cdd6f4;font-size:15px;padding:13px 38px 13px 14px;outline:none;cursor:pointer;">
+                  <option value="">Select terminal…</option>
+                </select>
+                <div style="position:absolute;right:14px;top:50%;transform:translateY(-50%);pointer-events:none;color:#6c7086;font-size:11px;">▼</div>
+              </div>
+            </div>
+
+            <div>
+              <label style="display:block;font-size:11px;color:#a6adc8;letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-bottom:8px;">Commodity</label>
+              <div style="position:relative;">
+                <select id="f-com" style="width:100%;appearance:none;background:#11111b;border:1px solid #313244;border-radius:11px;color:#cdd6f4;font-size:15px;padding:13px 38px 13px 14px;outline:none;cursor:pointer;">
+                  <option value="">Select cargo…</option>
+                </select>
+                <div style="position:absolute;right:14px;top:50%;transform:translateY(-50%);pointer-events:none;color:#6c7086;font-size:11px;">▼</div>
+              </div>
+              <div id="com-hint" class="hidden" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#fab387;margin-top:7px;"></div>
+            </div>
+
+            <div style="display:flex;gap:12px;">
+              <div style="flex:1;">
+                <label style="display:block;font-size:11px;color:#a6adc8;letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-bottom:8px;">Amount (SCU)</label>
+                <input id="f-amt" type="number" placeholder="0" style="width:100%;background:#11111b;border:1px solid #313244;border-radius:11px;color:#cdd6f4;font-family:'JetBrains Mono',monospace;font-size:15px;padding:13px 14px;outline:none;">
+              </div>
+              <div style="flex:1;">
+                <label style="display:block;font-size:11px;color:#a6adc8;letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-bottom:8px;">Buy / SCU</label>
+                <input id="f-buy" type="number" placeholder="0.00" style="width:100%;background:#11111b;border:1px solid #313244;border-radius:11px;color:#cdd6f4;font-family:'JetBrains Mono',monospace;font-size:15px;padding:13px 14px;outline:none;">
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;">
+              <button class="chip" data-amt="32" style="flex:1;background:#1e1e2e;border:1px solid #313244;border-radius:9px;color:#a6adc8;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;padding:8px 0;cursor:pointer;">32 SCU</button>
+              <button class="chip" data-amt="64" style="flex:1;background:#1e1e2e;border:1px solid #313244;border-radius:9px;color:#a6adc8;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;padding:8px 0;cursor:pointer;">64 SCU</button>
+              <button class="chip" data-amt="96" style="flex:1;background:#1e1e2e;border:1px solid #313244;border-radius:9px;color:#a6adc8;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;padding:8px 0;cursor:pointer;">96 SCU</button>
+              <button class="chip" data-amt="288" style="flex:1;background:#1e1e2e;border:1px solid #313244;border-radius:9px;color:#a6adc8;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;padding:8px 0;cursor:pointer;">288 SCU</button>
+              <button class="chip" data-amt="576" style="flex:1;background:#1e1e2e;border:1px solid #313244;border-radius:9px;color:#a6adc8;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;padding:8px 0;cursor:pointer;">576 SCU</button>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:#11111b;border:1px solid #313244;border-radius:11px;">
+              <span style="font-size:12px;color:#6c7086;letter-spacing:.08em;text-transform:uppercase;font-weight:600;">Cargo Cost</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:#f9e2af;"><span id="plan-cost"></span> <span style="font-size:11px;color:#6c7086;">aUEC</span></span>
+            </div>
+
+            <button id="btn-begin">▶  Begin Run &amp; Start Timer</button>
+          </div>
+        </div>
+
+        <!-- ACTIVE: LIVE SESSION + END -->
+        <div id="panel-active" class="hidden" style="background:#181825;border:1px solid #45475a;border-radius:18px;overflow:hidden;box-shadow:0 0 0 1px rgba(166,227,161,.08),0 18px 50px -24px rgba(166,227,161,.35);">
+          <div style="position:relative;padding:20px 22px;border-bottom:1px solid #313244;display:flex;align-items:center;gap:10px;overflow:hidden;">
+            <div style="position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(166,227,161,.10),transparent);width:40%;animation:scan 3.2s linear infinite;"></div>
+            <div style="width:8px;height:8px;border-radius:50%;background:#a6e3a1;animation:liveBlink 1.4s ease-in-out infinite;box-shadow:0 0 10px #a6e3a1;"></div>
+            <div style="font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#a6e3a1;position:relative;white-space:nowrap;">In Transit</div>
+          </div>
+
+          <div style="padding:22px;display:flex;flex-direction:column;gap:18px;">
+
+            <!-- timer -->
+            <div style="text-align:center;padding:6px 0 2px;">
+              <div style="font-size:11px;color:#6c7086;letter-spacing:.18em;text-transform:uppercase;font-weight:600;margin-bottom:6px;">Elapsed</div>
+              <div id="elapsed" style="font-family:'JetBrains Mono',monospace;font-size:48px;font-weight:700;letter-spacing:-.01em;line-height:1;color:#cdd6f4;"></div>
+            </div>
+
+            <!-- route -->
+            <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:#11111b;border:1px solid #313244;border-radius:12px;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:10px;color:#6c7086;letter-spacing:.1em;text-transform:uppercase;font-weight:600;">From</div>
+                <div id="active-from" style="font-size:13px;font-weight:500;color:#cdd6f4;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+              </div>
+              <div style="color:#a6e3a1;font-size:16px;">→</div>
+              <div style="flex:1;min-width:0;text-align:right;">
+                <div style="font-size:10px;color:#6c7086;letter-spacing:.1em;text-transform:uppercase;font-weight:600;">Cargo</div>
+                <div id="active-cargo" style="font-size:13px;font-weight:500;color:#94e2d5;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+              </div>
+            </div>
+
+            <div style="height:1px;background:#313244;"></div>
+
+            <div style="font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#a6adc8;">Close the Run</div>
+
+            <div>
+              <label style="display:block;font-size:11px;color:#a6adc8;letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-bottom:8px;">Sell Location</label>
+              <div style="position:relative;">
+                <select id="e-loc" style="width:100%;appearance:none;background:#11111b;border:1px solid #313244;border-radius:11px;color:#cdd6f4;font-size:15px;padding:13px 38px 13px 14px;outline:none;cursor:pointer;">
+                  <option value="">Select terminal…</option>
+                </select>
+                <div style="position:absolute;right:14px;top:50%;transform:translateY(-50%);pointer-events:none;color:#6c7086;font-size:11px;">▼</div>
+              </div>
+              <div id="sell-hint" class="hidden" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#fab387;margin-top:7px;"></div>
+            </div>
+
+            <div style="display:flex;gap:12px;">
+              <div style="flex:1;">
+                <label style="display:block;font-size:11px;color:#a6adc8;letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-bottom:8px;">SCU Sold</label>
+                <input id="e-sold" type="number" placeholder="0" style="width:100%;background:#11111b;border:1px solid #313244;border-radius:11px;color:#cdd6f4;font-family:'JetBrains Mono',monospace;font-size:15px;padding:13px 14px;outline:none;">
+              </div>
+              <div style="flex:1;">
+                <label style="display:block;font-size:11px;color:#a6adc8;letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-bottom:8px;">Sell / SCU</label>
+                <input id="e-sell" type="number" placeholder="0.00" style="width:100%;background:#11111b;border:1px solid #313244;border-radius:11px;color:#cdd6f4;font-family:'JetBrains Mono',monospace;font-size:15px;padding:13px 14px;outline:none;">
+              </div>
+            </div>
+
+            <!-- live preview -->
+            <div style="display:flex;gap:12px;">
+              <div style="flex:1;padding:12px 14px;background:#11111b;border:1px solid #313244;border-radius:11px;">
+                <div style="font-size:10px;color:#6c7086;letter-spacing:.1em;text-transform:uppercase;font-weight:600;">Revenue</div>
+                <div id="live-rev" style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;margin-top:4px;"></div>
+              </div>
+              <div id="live-profit-box" style="flex:1;padding:12px 14px;border-radius:11px;background:#11111b;border:1px solid #313244;">
+                <div style="font-size:10px;color:#6c7086;letter-spacing:.1em;text-transform:uppercase;font-weight:600;">Net Profit</div>
+                <div id="live-profit" style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;margin-top:4px;"></div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:10px;">
+              <button id="btn-abort" class="abort-btn" style="background:#1e1e2e;border:1px solid #313244;border-radius:12px;color:#a6adc8;font-size:14px;font-weight:600;padding:14px 18px;cursor:pointer;">Abort</button>
+              <button id="btn-complete">■  End Run &amp; Log Profit</button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- RIGHT: GRAPH + HISTORY -->
+      <section style="display:flex;flex-direction:column;gap:24px;">
+
+        <!-- GRAPH -->
+        <div style="background:#181825;border:1px solid #313244;border-radius:18px;padding:24px 26px 18px;">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:6px;">
+            <div>
+              <div style="font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#a6adc8;">Cumulative Profit</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:34px;font-weight:700;color:#a6e3a1;margin-top:8px;line-height:1;"><span id="chart-total"></span> <span style="font-size:15px;color:#6c7086;font-weight:500;">aUEC</span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:#6c7086;font-weight:500;">
+              <div style="width:18px;height:3px;border-radius:2px;background:#a6e3a1;"></div> per completed run
+            </div>
+          </div>
+
+          <div id="chart-wrap" style="position:relative;margin-top:6px;">
+            <svg viewBox="0 0 820 300" style="width:100%;height:auto;display:block;overflow:visible;">
+              <defs>
+                <linearGradient id="cl_fill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#a6e3a1" stop-opacity="0.30"></stop>
+                  <stop offset="100%" stop-color="#a6e3a1" stop-opacity="0"></stop>
+                </linearGradient>
+                <filter id="cl_glow" x="-30%" y="-30%" width="160%" height="160%">
+                  <feGaussianBlur stdDeviation="4" result="b"></feGaussianBlur>
+                  <feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
+                </filter>
+              </defs>
+              <g id="chart-dyn"></g>
+            </svg>
+
+            <div id="chart-tooltip" class="hidden" style="position:absolute;transform:translate(-50%,-118%);background:#11111b;border:1px solid #45475a;border-radius:11px;padding:11px 13px;pointer-events:none;white-space:nowrap;box-shadow:0 12px 30px -10px rgba(0,0,0,.7);z-index:5;">
+              <div id="tip-com" style="font-size:13px;font-weight:600;color:#cdd6f4;margin-bottom:6px;"></div>
+              <div id="tip-route" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6c7086;margin-bottom:3px;"></div>
+              <div style="display:flex;gap:14px;align-items:baseline;">
+                <div><span style="font-size:10px;color:#6c7086;">RUN</span> <span id="tip-delta" style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#a6e3a1;font-weight:700;"></span></div>
+                <div><span style="font-size:10px;color:#6c7086;">TOTAL</span> <span id="tip-cum" style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#cdd6f4;font-weight:700;"></span></div>
+              </div>
+            </div>
+            <div id="chart-empty" class="hidden" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#585b70;font-size:14px;">No runs logged yet — complete your first haul</div>
+          </div>
+        </div>
+
+        <!-- HISTORY -->
+        <div style="background:#181825;border:1px solid #313244;border-radius:18px;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #313244;">
+            <div style="font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#a6adc8;">Run Log</div>
+            <div id="log-count" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6c7086;"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1.3fr 1.6fr 0.6fr 0.9fr 1fr 1fr;gap:12px;padding:11px 22px;border-bottom:1px solid #313244;font-size:10px;color:#585b70;letter-spacing:.12em;text-transform:uppercase;font-weight:600;">
+            <div>Commodity</div><div>Route</div><div style="text-align:right;">SCU</div><div style="text-align:right;">Time</div><div style="text-align:right;">aUEC/hr</div><div style="text-align:right;">Profit</div>
+          </div>
+          <div id="log-rows"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="hidden" style="position:fixed;top:24px;left:50%;transform:translateX(-50%);background:#181825;border:1px solid #a6e3a1;border-radius:14px;padding:14px 22px;display:flex;align-items:center;gap:14px;box-shadow:0 18px 50px -16px rgba(166,227,161,.5);z-index:50;animation:toastIn .35s cubic-bezier(.2,.9,.3,1);">
+    <div style="width:34px;height:34px;border-radius:9px;background:rgba(166,227,161,.15);display:flex;align-items:center;justify-content:center;color:#a6e3a1;font-size:18px;">✓</div>
+    <div>
+      <div style="font-size:13px;font-weight:600;color:#cdd6f4;">Run logged</div>
+      <div id="toast-text" style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;margin-top:2px;"></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/uex.js"></script>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+*{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:#11111b;}
+  ::selection{background:#a6e3a1;color:#11111b;}
+  input,select,button{font-family:inherit;}
+  input::placeholder{color:#585b70;}
+  select option{background:#181825;color:#cdd6f4;}
+  input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  input[type=number]{-moz-appearance:textfield;}
+  @keyframes pulseRing{0%{transform:scale(1);opacity:.7;}70%{transform:scale(2.4);opacity:0;}100%{opacity:0;}}
+  @keyframes liveBlink{0%,100%{opacity:1;}50%{opacity:.25;}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes toastIn{from{opacity:0;transform:translateY(-12px) scale(.96);}to{opacity:1;transform:translateY(0) scale(1);}}
+  @keyframes scan{0%{transform:translateX(-100%);}100%{transform:translateX(220%);}}
+  .hidden{display:none !important;}
+  .chip:hover{background:#313244;color:#cdd6f4;}
+  .abort-btn:hover{border-color:#f38ba8;color:#f38ba8;}
+  .log-row:hover{background:#1e1e2e;}
+  .sys-select{appearance:none;background:#181825;border:1px solid #313244;border-radius:11px;color:#cdd6f4;font-size:13px;padding:10px 14px;outline:none;cursor:pointer;}
+  .icon-btn{background:#181825;border:1px solid #313244;border-radius:11px;color:#a6adc8;font-size:15px;padding:10px 14px;cursor:pointer;}
+  .icon-btn:hover{color:#cdd6f4;border-color:#45475a;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .icon-btn.spinning{animation:spin 1s linear infinite;}
+  .log-row{position:relative;}
+  .log-del{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;color:#585b70;font-size:13px;cursor:pointer;opacity:0;padding:4px 6px;}
+  .log-row:hover .log-del{opacity:1;}
+  .log-del:hover{color:#f38ba8;}

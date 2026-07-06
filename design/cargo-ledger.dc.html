@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:#11111b;}
+  ::selection{background:#a6e3a1;color:#11111b;}
+  input,select,button{font-family:inherit;}
+  input::placeholder{color:#585b70;}
+  select option{background:#181825;color:#cdd6f4;}
+  input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  input[type=number]{-moz-appearance:textfield;}
+  @keyframes pulseRing{0%{transform:scale(1);opacity:.7;}70%{transform:scale(2.4);opacity:0;}100%{opacity:0;}}
+  @keyframes liveBlink{0%,100%{opacity:1;}50%{opacity:.25;}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes toastIn{from{opacity:0;transform:translateY(-12px) scale(.96);}to{opacity:1;transform:translateY(0) scale(1);}}
+  @keyframes scan{0%{transform:translateX(-100%);}100%{transform:translateX(220%);}}
+</style>
+</helmet>
+<div style="min-height:100vh;background:radial-gradient(1200px 600px at 70% -10%,#1e1e2e 0%,#11111b 60%);font-family:'Space Grotesk',system-ui,sans-serif;color:#cdd6f4;padding:28px 28px 56px;">
+  <div style="max-width:1380px;margin:0 auto;">
+
+    <!-- HEADER -->
+    <header style="display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:24px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:16px;">
+        <div style="width:46px;height:46px;border-radius:13px;background:linear-gradient(145deg,#a6e3a1,#74c7ec);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 22px -6px rgba(166,227,161,.6);">
+          <div style="width:20px;height:20px;border:3px solid #11111b;border-radius:5px;transform:rotate(45deg);"></div>
+        </div>
+        <div>
+          <div style="font-size:21px;font-weight:700;letter-spacing:-.01em;line-height:1;">Cargo Ledger</div>
+          <div style="font-size:12px;color:#6c7086;letter-spacing:.16em;text-transform:uppercase;margin-top:5px;font-weight:500;">Stanton Trade Tracker</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:stretch;gap:12px;">
+        <div style="background:#181825;border:1px solid #313244;border-radius:14px;padding:12px 20px;min-width:150px;">
+          <div style="font-size:11px;color:#6c7086;letter-spacing:.12em;text-transform:uppercase;font-weight:600;">Total Profit</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;color:#a6e3a1;margin-top:4px;line-height:1;">{{ totalAbbr }}<span style="font-size:13px;color:#6c7086;font-weight:500;"> aUEC</span></div>
+        </div>
+        <div style="background:#181825;border:1px solid #313244;border-radius:14px;padding:12px 18px;">
+          <div style="font-size:11px;color:#6c7086;letter-spacing:.12em;text-transform:uppercase;font-weight:600;">Runs</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;margin-top:4px;line-height:1;">{{ runsCount }}</div>
+        </div>
+        <div style="background:#181825;border:1px solid #313244;border-radius:14px;padding:12px 18px;">
+          <div style="font-size:11px;color:#6c7086;letter-spacing:.12em;text-transform:uppercase;font-weight:600;">aUEC / hr</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;color:#89b4fa;margin-top:4px;line-height:1;">{{ perHrAbbr }}</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- BODY GRID -->
+    <div style="display:grid;grid-template-columns:392px 1fr;gap:24px;align-items:start;">
+
+      <!-- LEFT: SETUP / ACTIVE -->
+      <aside style="position:sticky;top:24px;">
+
+        <!-- IDLE: NEW RUN -->
+        <sc-if value="{{ isIdle }}" hint-placeholder-val="{{ true }}">
+        <div style="background:#181825;border:1px solid #313244;border-radius:18px;overflow:hidden;">
+          <div style="padding:20px 22px;border-bottom:1px solid #313244;display:flex;align-items:center;gap:10px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:#89b4fa;"></div>
+            <div style="font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;">Plan a Run</div>
+          </div>
+          <div style="padding:22px;display:flex;flex-direction:column;gap:18px;">
+
+            <div>
+              <label style="display:block;font-size:11px;color:#a6adc8;letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-bottom:8px;">Buy Location</label>
+              <div style="position:relative;">
+                <select value="{{ fLoc }}" onChange="{{ onLoc }}" style="width:100%;appearance:none;background:#11111b;border:1px solid #313244;border-radius:11px;color:#cdd6f4;font-size:15px;padding:13px 38px 13px 14px;outline:none;cursor:pointer;">
+                  <option value="">Select terminal…</option>
+                  <sc-for list="{{ locations }}" as="loc" hint-placeholder-count="4"><option value="{{ loc }}">{{ loc }}</option></sc-for>
+                </select>
+                <div style="position:absolute;right:14px;top:50%;transform:translateY(-50%);pointer-events:none;color:#6c7086;font-size:11px;">▼</div>
+              </div>
+            </div>
+
+            <div>
+              <label style="display:block;font-size:11px;color:#a6adc8;letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-bottom:8px;">Commodity</label>
+              <div style="position:relative;">
+                <select value="{{ fCom }}" onChange="{{ onCom }}" style="width:100%;appearance:none;background:#11111b;border:1px solid #313244;border-radius:11px;color:#cdd6f4;font-size:15px;padding:13px 38px 13px 14px;outline:none;cursor:pointer;">
+                  <option value="">Select cargo…</option>
+                  <sc-for list="{{ commodities }}" as="com" hint-placeholder-count="6"><option value="{{ com }}">{{ com }}</option></sc-for>
+                </select>
+                <div style="position:absolute;right:14px;top:50%;transform:translateY(-50%);pointer-events:none;color:#6c7086;font-size:11px;">▼</div>
+              </div>
+              <sc-if value="{{ comHint }}" hint-placeholder-val="">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#fab387;margin-top:7px;">ref ~{{ comHint }} aUEC/SCU</div>
+              </sc-if>
+            </div>
+
+            <div style="display:flex;gap:12px;">
+              <div style="flex:1;">
+                <label style="display:block;font-size:11px;color:#a6adc8;letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-bottom:8px;">Amount (SCU)</label>
+                <input type="number" value="{{ fAmt }}" onInput="{{ onAmt }}" placeholder="0" style="width:100%;background:#11111b;border:1px solid #313244;border-radius:11px;color:#cdd6f4;font-family:'JetBrains Mono',monospace;font-size:15px;padding:13px 14px;outline:none;">
+              </div>
+              <div style="flex:1;">
+                <label style="display:block;font-size:11px;color:#a6adc8;letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-bottom:8px;">Buy / SCU</label>
+                <input type="number" value="{{ fBuy }}" onInput="{{ onBuy }}" placeholder="0.00" style="width:100%;background:#11111b;border:1px solid #313244;border-radius:11px;color:#cdd6f4;font-family:'JetBrains Mono',monospace;font-size:15px;padding:13px 14px;outline:none;">
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;">
+              <sc-for list="{{ amtChips }}" as="chip" hint-placeholder-count="5">
+                <button onClick="{{ chip.on }}" style="flex:1;background:#1e1e2e;border:1px solid #313244;border-radius:9px;color:#a6adc8;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;padding:8px 0;cursor:pointer;" style-hover="background:#313244;color:#cdd6f4;">{{ chip.label }}</button>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:#11111b;border:1px solid #313244;border-radius:11px;">
+              <span style="font-size:12px;color:#6c7086;letter-spacing:.08em;text-transform:uppercase;font-weight:600;">Cargo Cost</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:#f9e2af;">{{ planCost }} <span style="font-size:11px;color:#6c7086;">aUEC</span></span>
+            </div>
+
+            <button onClick="{{ begin }}" disabled="{{ beginDisabled }}" style="{{ beginStyle }}">▶  Begin Run &amp; Start Timer</button>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- ACTIVE: LIVE SESSION + END -->
+        <sc-if value="{{ isActive }}" hint-placeholder-val="">
+        <div style="background:#181825;border:1px solid #45475a;border-radius:18px;overflow:hidden;box-shadow:0 0 0 1px rgba(166,227,161,.08),0 18px 50px -24px rgba(166,227,161,.35);">
+          <div style="position:relative;padding:20px 22px;border-bottom:1px solid #313244;display:flex;align-items:center;gap:10px;overflow:hidden;">
+            <div style="position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(166,227,161,.10),transparent);width:40%;animation:scan 3.2s linear infinite;"></div>
+            <div style="width:8px;height:8px;border-radius:50%;background:#a6e3a1;animation:liveBlink 1.4s ease-in-out infinite;box-shadow:0 0 10px #a6e3a1;"></div>
+            <div style="font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#a6e3a1;position:relative;white-space:nowrap;">In Transit</div>
+          </div>
+
+          <div style="padding:22px;display:flex;flex-direction:column;gap:18px;">
+
+            <!-- timer -->
+            <div style="text-align:center;padding:6px 0 2px;">
+              <div style="font-size:11px;color:#6c7086;letter-spacing:.18em;text-transform:uppercase;font-weight:600;margin-bottom:6px;">Elapsed</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:48px;font-weight:700;letter-spacing:-.01em;line-height:1;color:#cdd6f4;">{{ elapsedStr }}</div>
+            </div>
+
+            <!-- route -->
+            <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:#11111b;border:1px solid #313244;border-radius:12px;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:10px;color:#6c7086;letter-spacing:.1em;text-transform:uppercase;font-weight:600;">From</div>
+                <div style="font-size:13px;font-weight:500;color:#cdd6f4;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ activeFrom }}</div>
+              </div>
+              <div style="color:#a6e3a1;font-size:16px;">→</div>
+              <div style="flex:1;min-width:0;text-align:right;">
+                <div style="font-size:10px;color:#6c7086;letter-spacing:.1em;text-transform:uppercase;font-weight:600;">Cargo</div>
+                <div style="font-size:13px;font-weight:500;color:#94e2d5;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ activeScu }} SCU {{ activeCom }}</div>
+              </div>
+            </div>
+
+            <div style="height:1px;background:#313244;"></div>
+
+            <div style="font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#a6adc8;">Close the Run</div>
+
+            <div>
+              <label style="display:block;font-size:11px;color:#a6adc8;letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-bottom:8px;">Sell Location</label>
+              <div style="position:relative;">
+                <select value="{{ eLoc }}" onChange="{{ onELoc }}" style="width:100%;appearance:none;background:#11111b;border:1px solid #313244;border-radius:11px;color:#cdd6f4;font-size:15px;padding:13px 38px 13px 14px;outline:none;cursor:pointer;">
+                  <option value="">Select terminal…</option>
+                  <sc-for list="{{ locations }}" as="loc" hint-placeholder-count="4"><option value="{{ loc }}">{{ loc }}</option></sc-for>
+                </select>
+                <div style="position:absolute;right:14px;top:50%;transform:translateY(-50%);pointer-events:none;color:#6c7086;font-size:11px;">▼</div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:12px;">
+              <div style="flex:1;">
+                <label style="display:block;font-size:11px;color:#a6adc8;letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-bottom:8px;">SCU Sold</label>
+                <input type="number" value="{{ eSold }}" onInput="{{ onESold }}" placeholder="0" style="width:100%;background:#11111b;border:1px solid #313244;border-radius:11px;color:#cdd6f4;font-family:'JetBrains Mono',monospace;font-size:15px;padding:13px 14px;outline:none;">
+              </div>
+              <div style="flex:1;">
+                <label style="display:block;font-size:11px;color:#a6adc8;letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-bottom:8px;">Sell / SCU</label>
+                <input type="number" value="{{ eSell }}" onInput="{{ onESell }}" placeholder="0.00" style="width:100%;background:#11111b;border:1px solid #313244;border-radius:11px;color:#cdd6f4;font-family:'JetBrains Mono',monospace;font-size:15px;padding:13px 14px;outline:none;">
+              </div>
+            </div>
+
+            <!-- live preview -->
+            <div style="display:flex;gap:12px;">
+              <div style="flex:1;padding:12px 14px;background:#11111b;border:1px solid #313244;border-radius:11px;">
+                <div style="font-size:10px;color:#6c7086;letter-spacing:.1em;text-transform:uppercase;font-weight:600;">Revenue</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;margin-top:4px;">{{ liveRevenue }}</div>
+              </div>
+              <div style="flex:1;padding:12px 14px;border-radius:11px;{{ liveProfitBox }}">
+                <div style="font-size:10px;color:#6c7086;letter-spacing:.1em;text-transform:uppercase;font-weight:600;">Net Profit</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;margin-top:4px;color:{{ liveProfitColor }};">{{ liveProfit }}</div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:10px;">
+              <button onClick="{{ cancel }}" style="background:#1e1e2e;border:1px solid #313244;border-radius:12px;color:#a6adc8;font-size:14px;font-weight:600;padding:14px 18px;cursor:pointer;" style-hover="border-color:#f38ba8;color:#f38ba8;">Abort</button>
+              <button onClick="{{ complete }}" disabled="{{ completeDisabled }}" style="{{ completeStyle }}">■  End Run &amp; Log Profit</button>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+      </aside>
+
+      <!-- RIGHT: GRAPH + HISTORY -->
+      <section style="display:flex;flex-direction:column;gap:24px;">
+
+        <!-- GRAPH -->
+        <div style="background:#181825;border:1px solid #313244;border-radius:18px;padding:24px 26px 18px;">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:6px;">
+            <div>
+              <div style="font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#a6adc8;">Cumulative Profit</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:34px;font-weight:700;color:#a6e3a1;margin-top:8px;line-height:1;">{{ totalProfit }} <span style="font-size:15px;color:#6c7086;font-weight:500;">aUEC</span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:#6c7086;font-weight:500;">
+              <div style="width:18px;height:3px;border-radius:2px;background:#a6e3a1;"></div> per completed run
+            </div>
+          </div>
+
+          <div style="position:relative;margin-top:6px;" onMouseLeave="{{ clearHover }}">
+            <svg viewBox="0 0 820 300" style="width:100%;height:auto;display:block;overflow:visible;">
+              <defs>
+                <linearGradient id="cl_fill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#a6e3a1" stop-opacity="0.30"></stop>
+                  <stop offset="100%" stop-color="#a6e3a1" stop-opacity="0"></stop>
+                </linearGradient>
+                <filter id="cl_glow" x="-30%" y="-30%" width="160%" height="160%">
+                  <feGaussianBlur stdDeviation="4" result="b"></feGaussianBlur>
+                  <feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
+                </filter>
+              </defs>
+
+              <sc-for list="{{ yTicks }}" as="t" hint-placeholder-count="4">
+                <line x1="44" y1="{{ t.y }}" x2="798" y2="{{ t.y }}" stroke="#313244" stroke-width="1" stroke-dasharray="2 5"></line>
+                <text x="6" y="{{ t.ty }}" fill="#585b70" font-size="11" font-family="JetBrains Mono, monospace">{{ t.label }}</text>
+              </sc-for>
+
+              <path d="{{ areaPath }}" fill="url(#cl_fill)"></path>
+              <path d="{{ linePath }}" fill="none" stroke="#a6e3a1" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" filter="url(#cl_glow)"></path>
+
+              <sc-if value="{{ hover.show }}" hint-placeholder-val="">
+                <line x1="{{ hover.cx }}" y1="28" x2="{{ hover.cx }}" y2="262" stroke="#a6e3a1" stroke-width="1" stroke-dasharray="3 4" opacity="0.4"></line>
+              </sc-if>
+
+              <sc-for list="{{ points }}" as="p" hint-placeholder-count="7">
+                <circle cx="{{ p.cx }}" cy="{{ p.cy }}" r="{{ p.r }}" fill="#181825" stroke="#a6e3a1" stroke-width="2.5"></circle>
+                <circle cx="{{ p.cx }}" cy="{{ p.cy }}" r="16" fill="transparent" onMouseEnter="{{ p.onEnter }}" style="cursor:pointer;"></circle>
+                <text x="{{ p.cx }}" y="284" fill="#585b70" font-size="11" font-family="JetBrains Mono, monospace" text-anchor="middle">{{ p.xlabel }}</text>
+              </sc-for>
+
+              <sc-if value="{{ lastPoint.show }}" hint-placeholder-val="">
+                <circle cx="{{ lastPoint.cx }}" cy="{{ lastPoint.cy }}" r="5" fill="#a6e3a1" style="transform-origin:center;transform-box:fill-box;animation:pulseRing 2s ease-out infinite;"></circle>
+                <circle cx="{{ lastPoint.cx }}" cy="{{ lastPoint.cy }}" r="4" fill="#a6e3a1"></circle>
+              </sc-if>
+            </svg>
+
+            <sc-if value="{{ hover.show }}" hint-placeholder-val="">
+              <div style="position:absolute;left:{{ hover.leftPct }};top:{{ hover.topPct }};transform:translate(-50%,-118%);background:#11111b;border:1px solid #45475a;border-radius:11px;padding:11px 13px;pointer-events:none;white-space:nowrap;box-shadow:0 12px 30px -10px rgba(0,0,0,.7);z-index:5;">
+                <div style="font-size:13px;font-weight:600;color:#cdd6f4;margin-bottom:6px;">{{ hover.commodity }}</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6c7086;margin-bottom:3px;">{{ hover.route }}</div>
+                <div style="display:flex;gap:14px;align-items:baseline;">
+                  <div><span style="font-size:10px;color:#6c7086;">RUN</span> <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#a6e3a1;font-weight:700;">+{{ hover.delta }}</span></div>
+                  <div><span style="font-size:10px;color:#6c7086;">TOTAL</span> <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#cdd6f4;font-weight:700;">{{ hover.cum }}</span></div>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <!-- HISTORY -->
+        <div style="background:#181825;border:1px solid #313244;border-radius:18px;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #313244;">
+            <div style="font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#a6adc8;">Run Log</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6c7086;">{{ runsCount }} entries · best {{ bestAbbr }}</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1.3fr 1.6fr 0.6fr 0.9fr 1fr 1fr;gap:12px;padding:11px 22px;border-bottom:1px solid #313244;font-size:10px;color:#585b70;letter-spacing:.12em;text-transform:uppercase;font-weight:600;">
+            <div>Commodity</div><div>Route</div><div style="text-align:right;">SCU</div><div style="text-align:right;">Time</div><div style="text-align:right;">aUEC/hr</div><div style="text-align:right;">Profit</div>
+          </div>
+          <sc-for list="{{ runList }}" as="r" hint-placeholder-count="7">
+            <div style="display:grid;grid-template-columns:1.3fr 1.6fr 0.6fr 0.9fr 1fr 1fr;gap:12px;padding:14px 22px;border-bottom:1px solid #1e1e2e;align-items:center;" style-hover="background:#1e1e2e;">
+              <div style="display:flex;align-items:center;gap:9px;min-width:0;">
+                <div style="width:7px;height:7px;border-radius:2px;background:{{ r.dot }};flex:none;"></div>
+                <span style="font-size:14px;font-weight:500;color:#cdd6f4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.commodity }}</span>
+              </div>
+              <div style="font-size:12px;color:#a6adc8;font-family:'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.route }}</div>
+              <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:13px;color:#94e2d5;">{{ r.scu }}</div>
+              <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:13px;color:#6c7086;">{{ r.dur }}</div>
+              <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:13px;color:#89b4fa;">{{ r.perHr }}</div>
+              <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:{{ r.profitColor }};">{{ r.profit }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <sc-if value="{{ toast.show }}" hint-placeholder-val="">
+    <div style="position:fixed;top:24px;left:50%;transform:translateX(-50%);background:#181825;border:1px solid #a6e3a1;border-radius:14px;padding:14px 22px;display:flex;align-items:center;gap:14px;box-shadow:0 18px 50px -16px rgba(166,227,161,.5);z-index:50;animation:toastIn .35s cubic-bezier(.2,.9,.3,1);">
+      <div style="width:34px;height:34px;border-radius:9px;background:rgba(166,227,161,.15);display:flex;align-items:center;justify-content:center;color:#a6e3a1;font-size:18px;">✓</div>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:#cdd6f4;">Run logged</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:{{ toast.color }};margin-top:2px;">{{ toast.text }}</div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    now: Date.now(),
+    phase: 'idle',
+    fLoc: '', fCom: '', fAmt: '', fBuy: '',
+    active: null,
+    eLoc: '', eSold: '', eSell: '',
+    hovered: -1,
+    toast: null,
+    runs: [
+      { commodity: 'Processed Food',  from: 'Port Olisar',   to: 'Area18',       scu: 96, profit: 88400,  dur: 1320 },
+      { commodity: 'Agricium',        from: 'ArcCorp 141',   to: 'Lorville',     scu: 64, profit: 274000, dur: 1980 },
+      { commodity: 'Titanium',        from: 'HDMS-Edmond',   to: 'New Babbage',  scu: 96, profit: 196500, dur: 1620 },
+      { commodity: 'Laranite',        from: 'Shubin SAL-2',  to: 'Area18',       scu: 96, profit: 512000, dur: 2400 },
+      { commodity: 'Medical Supplies',from: 'Lorville',      to: 'Grim HEX',     scu: 64, profit: 143200, dur: 1500 },
+      { commodity: 'Diamond',         from: "Brio's Breaker",to: 'New Babbage',  scu: 96, profit: 389700, dur: 2100 },
+      { commodity: 'Gold',            from: 'CRU-L1',        to: 'Lorville',     scu: 64, profit: 301000, dur: 1860 },
+    ],
+  };
+
+  LOCATIONS = ['Port Olisar','Lorville','Area18','New Babbage','Grim HEX','ArcCorp 141','HDMS-Edmond','Shubin SAL-2','Rayari Deltana',"Brio's Breaker",'CRU-L1','HUR-L1','MIC-L1'];
+  COMMODITIES = ['Laranite','Agricium','Titanium','Gold','Diamond','Quantanium','Aluminum','Medical Supplies','Processed Food','Distilled Spirits','Astatine','Stims'];
+  PRICES = { Laranite:28.5, Agricium:26, Titanium:9.5, Gold:6, Diamond:7.6, Quantanium:88, Aluminum:1.3, 'Medical Supplies':18, 'Processed Food':1.5, 'Distilled Spirits':5, Astatine:9, Stims:3.8 };
+  DOTS = ['#a6e3a1','#89b4fa','#cba6f7','#fab387','#94e2d5','#f5c2e7','#f9e2af','#74c7ec'];
+
+  componentDidMount() { this._t = setInterval(() => this.setState({ now: Date.now() }), 1000); }
+  componentWillUnmount() { clearInterval(this._t); if (this._tt) clearTimeout(this._tt); }
+
+  fmt(n) { return Math.round(n).toLocaleString('en-US'); }
+  abbr(n) { const a = Math.abs(n); const s = n < 0 ? '-' : ''; if (a >= 1e6) return s + (a/1e6).toFixed(2) + 'M'; if (a >= 1e3) return s + Math.round(a/1e3) + 'K'; return s + Math.round(a); }
+  clock(sec) { sec = Math.max(0, Math.floor(sec)); const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60; const p = x => String(x).padStart(2,'0'); return h > 0 ? `${h}:${p(m)}:${p(s)}` : `${p(m)}:${p(s)}`; }
+
+  begin() {
+    const amt = parseFloat(this.state.fAmt) || 0, buy = parseFloat(this.state.fBuy) || 0;
+    if (!this.state.fLoc || !this.state.fCom || amt <= 0 || buy <= 0) return;
+    this.setState({
+      phase: 'active',
+      active: { from: this.state.fLoc, commodity: this.state.fCom, scu: amt, buyPrice: buy, cost: amt*buy, startTime: Date.now() },
+      eLoc: '', eSold: String(amt), eSell: '',
+    });
+  }
+
+  cancel() { this.setState({ phase: 'idle', active: null, fLoc:'', fCom:'', fAmt:'', fBuy:'', eLoc:'', eSold:'', eSell:'' }); }
+
+  complete() {
+    const a = this.state.active; if (!a) return;
+    const sold = parseFloat(this.state.eSold) || 0, sell = parseFloat(this.state.eSell) || 0;
+    if (!this.state.eLoc || sold <= 0 || sell <= 0) return;
+    const profit = sold*sell - a.cost;
+    const dur = Math.max(1, Math.floor((Date.now() - a.startTime)/1000));
+    const run = { commodity: a.commodity, from: a.from, to: this.state.eLoc, scu: a.scu, profit, dur };
+    if (this._tt) clearTimeout(this._tt);
+    this.setState(s => ({
+      runs: [...s.runs, run],
+      phase: 'idle', active: null, hovered: -1,
+      fLoc:'', fCom:'', fAmt:'', fBuy:'', eLoc:'', eSold:'', eSell:'',
+      toast: { profit },
+    }));
+    this._tt = setTimeout(() => this.setState({ toast: null }), 5000);
+  }
+
+  buildChart(runs) {
+    const cum = [0]; let t = 0;
+    runs.forEach(r => { t += r.profit; cum.push(t); });
+    const n = cum.length;
+    const x0=44, x1=798, y0=28, y1=262;
+    const maxY = Math.max(1, Math.max(...cum)) * 1.12;
+    const X = i => n <= 1 ? x0 : x0 + (i/(n-1))*(x1-x0);
+    const Y = v => y1 - (v/maxY)*(y1-y0);
+    let line = '';
+    for (let i=0;i<n;i++) line += (i===0?'M':'L') + X(i).toFixed(1) + ' ' + Y(cum[i]).toFixed(1) + ' ';
+    const area = line + `L ${X(n-1).toFixed(1)} ${y1} L ${X(0).toFixed(1)} ${y1} Z`;
+    const points = [];
+    for (let i=1;i<n;i++) {
+      const r = runs[i-1];
+      points.push({
+        idx: i, cx: X(i), cy: Y(cum[i]),
+        r: this.state.hovered === i ? 6 : 4,
+        xlabel: 'R' + i,
+        onEnter: () => this.setState({ hovered: i }),
+        _run: r, _cum: cum[i],
+      });
+    }
+    const yTicks = [];
+    for (let k=0;k<=3;k++) { const v = maxY*k/3; const y = Y(v); yTicks.push({ y: y.toFixed(1), ty: (y+4).toFixed(1), label: this.abbr(v) }); }
+    return { line, area, points, yTicks, cum, n, X, Y };
+  }
+
+  renderVals() {
+    const st = this.state;
+    const ch = this.buildChart(st.runs);
+
+    const amt = parseFloat(st.fAmt) || 0, buy = parseFloat(st.fBuy) || 0;
+    const planCost = amt > 0 && buy > 0 ? this.fmt(amt*buy) : '0';
+    const beginDisabled = !(st.fLoc && st.fCom && amt > 0 && buy > 0);
+    const beginBase = 'width:100%;border:none;border-radius:12px;font-size:15px;font-weight:700;padding:15px 18px;letter-spacing:.02em;transition:transform .1s;';
+    const beginStyle = beginDisabled
+      ? beginBase + 'background:#313244;color:#585b70;cursor:not-allowed;'
+      : beginBase + 'background:linear-gradient(135deg,#a6e3a1,#94e2d5);color:#11111b;cursor:pointer;box-shadow:0 10px 30px -10px rgba(166,227,161,.6);';
+
+    // active / live
+    const a = st.active;
+    const elapsed = a ? (st.now - a.startTime)/1000 : 0;
+    const sold = parseFloat(st.eSold) || 0, sell = parseFloat(st.eSell) || 0;
+    const liveRev = sold > 0 && sell > 0 ? sold*sell : 0;
+    const liveProf = a ? liveRev - a.cost : 0;
+    const profPos = liveProf >= 0;
+    const completeDisabled = !(st.eLoc && sold > 0 && sell > 0);
+    const cBase = 'flex:1;border:none;border-radius:12px;font-size:14px;font-weight:700;padding:14px 18px;transition:transform .1s;';
+    const completeStyle = completeDisabled
+      ? cBase + 'background:#313244;color:#585b70;cursor:not-allowed;'
+      : cBase + (profPos
+          ? 'background:linear-gradient(135deg,#a6e3a1,#94e2d5);color:#11111b;cursor:pointer;box-shadow:0 10px 28px -10px rgba(166,227,161,.6);'
+          : 'background:linear-gradient(135deg,#f38ba8,#eba0ac);color:#11111b;cursor:pointer;box-shadow:0 10px 28px -10px rgba(243,139,168,.6);');
+
+    // hover tooltip
+    let hover = { show: false };
+    if (st.hovered >= 1 && st.hovered < ch.n) {
+      const r = st.runs[st.hovered-1];
+      const cx = ch.X(st.hovered), cy = ch.Y(ch.cum[st.hovered]);
+      hover = {
+        show: true, cx: cx.toFixed(1),
+        leftPct: (cx/820*100).toFixed(2) + '%', topPct: (cy/300*100).toFixed(2) + '%',
+        commodity: r.commodity, route: r.from + '  →  ' + r.to,
+        delta: this.fmt(r.profit), cum: this.fmt(ch.cum[st.hovered]),
+      };
+    }
+    const lastPoint = ch.n > 1 ? { show: true, cx: ch.X(ch.n-1).toFixed(1), cy: ch.Y(ch.cum[ch.n-1]).toFixed(1) } : { show: false };
+
+    // stats
+    const total = ch.cum[ch.n-1] || 0;
+    const totalDur = st.runs.reduce((s,r)=>s+r.dur,0);
+    const perHr = totalDur > 0 ? total/(totalDur/3600) : 0;
+    const best = st.runs.reduce((m,r)=>Math.max(m,r.profit),0);
+
+    const runList = st.runs.slice().reverse().map((r,i) => ({
+      commodity: r.commodity, route: r.from + ' → ' + r.to,
+      scu: r.scu, dur: this.clock(r.dur),
+      perHr: this.abbr(r.dur > 0 ? r.profit/(r.dur/3600) : 0) + '/h',
+      profit: (r.profit>=0?'+':'') + this.abbr(r.profit),
+      profitColor: r.profit>=0 ? '#a6e3a1' : '#f38ba8',
+      dot: this.DOTS[(st.runs.length-1-i) % this.DOTS.length],
+    }));
+
+    const toast = st.toast
+      ? { show: true, text: (st.toast.profit>=0?'+':'') + this.fmt(st.toast.profit) + ' aUEC', color: st.toast.profit>=0?'#a6e3a1':'#f38ba8' }
+      : { show: false };
+
+    const setAmt = v => () => this.setState({ fAmt: String(v) });
+
+    return {
+      isIdle: st.phase === 'idle', isActive: st.phase === 'active',
+      locations: this.LOCATIONS, commodities: this.COMMODITIES,
+      comHint: st.fCom && this.PRICES[st.fCom] ? String(this.PRICES[st.fCom]) : '',
+
+      fLoc: st.fLoc, fCom: st.fCom, fAmt: st.fAmt, fBuy: st.fBuy,
+      onLoc: e => this.setState({ fLoc: e.target.value }),
+      onCom: e => this.setState({ fCom: e.target.value }),
+      onAmt: e => this.setState({ fAmt: e.target.value }),
+      onBuy: e => this.setState({ fBuy: e.target.value }),
+      amtChips: [32,64,96,288,576].map(v => ({ label: v+' SCU', on: setAmt(v) })),
+      planCost, beginDisabled, beginStyle, begin: () => this.begin(),
+
+      elapsedStr: this.clock(elapsed),
+      activeFrom: a ? a.from : '', activeCom: a ? a.commodity : '', activeScu: a ? a.scu : '',
+      eLoc: st.eLoc, eSold: st.eSold, eSell: st.eSell,
+      onELoc: e => this.setState({ eLoc: e.target.value }),
+      onESold: e => this.setState({ eSold: e.target.value }),
+      onESell: e => this.setState({ eSell: e.target.value }),
+      liveRevenue: liveRev > 0 ? this.fmt(liveRev) : '—',
+      liveProfit: a && (sold>0&&sell>0) ? (profPos?'+':'') + this.fmt(liveProf) : '—',
+      liveProfitColor: !(sold>0&&sell>0) ? '#6c7086' : (profPos ? '#a6e3a1' : '#f38ba8'),
+      liveProfitBox: 'background:#11111b;border:1px solid ' + (!(sold>0&&sell>0) ? '#313244' : (profPos ? 'rgba(166,227,161,.4)' : 'rgba(243,139,168,.4)')) + ';',
+      completeDisabled, completeStyle, complete: () => this.complete(), cancel: () => this.cancel(),
+
+      linePath: ch.line, areaPath: ch.area, points: ch.points, yTicks: ch.yTicks,
+      hover, lastPoint, clearHover: () => this.setState({ hovered: -1 }),
+
+      totalProfit: this.fmt(total), totalAbbr: this.abbr(total),
+      runsCount: st.runs.length, perHrAbbr: this.abbr(perHr), bestAbbr: this.abbr(best),
+      runList, toast,
+    };
+  }
+}
+</script>
+</body>
+</html>
